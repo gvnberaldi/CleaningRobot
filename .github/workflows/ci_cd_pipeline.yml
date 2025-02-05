@@ -29,12 +29,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Unit Tests
-        run: pytest tests/unit
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
-      - name: Run Integration Tests
-        run: pytest tests/integration
+      - name: Run Unit Tests with Coverage
+        run: |
+          coverage run -m pytest tests/unit
+          coverage report --fail-under=80
+
+      - name: Run Integration Tests with Coverage
+        run: |
+          coverage run -m pytest tests/integration
+          coverage report --fail-under=80
+
+<<<<<<< Updated upstream
+=======
+      # - name: Run Integration Tests
+      #  run: pytest tests/integration
   
+>>>>>>> Stashed changes
   acceptance-tests:
     name: Acceptance Tests
     runs-on: ubuntu-latest
@@ -55,5 +68,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Acceptance Tests
-        run: pytest tests/acceptance
+<<<<<<< Updated upstream
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+
+      - name: Run Acceptance Tests with Coverage
+        run: |
+          coverage run -m pytest tests/acceptance
+          coverage report --fail-under=80
+=======
+      # - name: Run Acceptance Tests
+      #  run: pytest tests/acceptance
+>>>>>>> Stashed changes
