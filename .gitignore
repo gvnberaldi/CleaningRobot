@@ -7,7 +7,7 @@ __pycache__/
 *.so
 
 # PyCharm Files
-.idea 
+.idea
 
 # Distribution / packaging
 .Python
