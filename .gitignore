@@ -9,6 +9,9 @@ __pycache__/
 # PyCharm Files
 .idea
 
+# Code Tests
+.coverage
+
 # Distribution / packaging
 .Python
 build/
