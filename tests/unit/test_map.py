@@ -7,7 +7,22 @@ from app.map import Map
 
 
 class TestValidMapData:
-    def test_valid_txt_files(self, valid_txt_files):
+    """
+    Test valid map data loading from TXT and JSON files.
+
+    This class contains tests to verify that valid TXT and JSON map files
+    are correctly loaded, with proper row/column counts and correct walkability
+    of tiles.
+    """
+
+    def test_valid_txt_files(self, valid_txt_files: list):
+        """
+        Test loading of valid text map files, ensuring correct row/column count
+        and proper walkability of tiles based on the text file's content.
+
+        Args: valid_txt_files (list): Valid text map data for testing.
+        """
+
         for txt_data in valid_txt_files:
             map = Map()
             map.load_from_txt(txt_data)
@@ -24,7 +39,13 @@ class TestValidMapData:
                     expected_walkable = char == 'o'
                     assert is_walkable == expected_walkable
 
-    def test_valid_json_files(self, valid_json_files):
+    def test_valid_json_files(self, valid_json_files: list):
+        """
+        Test loading of valid JSON map files, ensuring correct row/column count
+        and correct walkability of tiles as specified in the JSON data.
+
+        Args: valid_json_files (list): Valid JSON map data for testing.
+        """
         for json_data in valid_json_files:
             map = Map()
             map.load_from_json(json_data)
@@ -40,8 +61,20 @@ class TestValidMapData:
 
 
 class TestInvalidMapData:
+    """
+    Test handling of invalid map data from TXT and JSON files.
 
-    def test_invalid_txt_files(self, invalid_txt_files):
+    This class contains tests to ensure that invalid TXT and JSON map files
+    raise the appropriate errors and that map attributes remain None after a failed load.
+    """
+
+    def test_invalid_txt_files(self, invalid_txt_files: list):
+        """
+        Test handling of invalid text map files, ensuring ValueError is raised
+        and attributes remain None after a failed load.
+
+        Args: invalid_txt_files (list): Invalid text map data for testing failure.
+        """
         for txt_data in invalid_txt_files:
             map = Map()
             with pytest.raises(ValueError) as e:
@@ -56,7 +89,14 @@ class TestInvalidMapData:
             assert map.rows_num() is None
             assert map.cols_num() is None
 
-    def test_invalid_json_files(self, invalid_json_files):
+    def test_invalid_json_files(self, invalid_json_files: list):
+        """
+        Test handling of invalid JSON map files, ensuring ValueError is raised
+        and attributes remain None after a failed load.
+
+        Args: invalid_json_files (list): Invalid JSON map data for testing failure.
+        """
+
         for json_data in invalid_json_files:
             map = Map()
             with pytest.raises(ValueError) as e:

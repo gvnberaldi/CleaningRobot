@@ -8,7 +8,12 @@ data_dir = os.path.join(current_file_dir, 'synthetic_data')
 
 
 @pytest.fixture
-def valid_txt_files():
+def valid_txt_files() -> list:
+    """
+    Fixture that provides valid text map files for testing.
+    Reads and returns a list of valid .txt files.
+    """
+
     valid_txt_path = os.path.join(data_dir, 'valid_data/txt')
     txt_files = []
     for file_name in os.listdir(valid_txt_path):
@@ -19,7 +24,11 @@ def valid_txt_files():
 
 
 @pytest.fixture
-def valid_json_files():
+def valid_json_files() -> list:
+    """
+    Fixture that provides valid JSON map files for testing.
+    Reads and returns a list of valid .json files.
+    """
     valid_json_path = os.path.join(data_dir, 'valid_data/json')
     json_files = []
     for file_name in os.listdir(valid_json_path):
@@ -30,7 +39,11 @@ def valid_json_files():
 
 
 @pytest.fixture
-def invalid_txt_files():
+def invalid_txt_files() -> list:
+    """
+    Fixture that provides invalid text map files for testing.
+    Reads and returns a list of invalid .txt files.
+    """
     invalid_txt_path = os.path.join(data_dir, 'invalid_data/txt')
     txt_files = []
     for file_name in os.listdir(invalid_txt_path):
@@ -40,7 +53,11 @@ def invalid_txt_files():
 
 
 @pytest.fixture
-def invalid_json_files():
+def invalid_json_files() -> list:
+    """
+    Fixture that provides invalid JSON map files for testing.
+    Reads and returns a list of invalid .json files.
+    """
     invalid_json_path = os.path.join(data_dir, 'invalid_data/json')
     json_files = []
     for file_name in os.listdir(invalid_json_path):
