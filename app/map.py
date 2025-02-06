@@ -4,16 +4,16 @@ from pydantic import BaseModel, Field, ValidationError, model_validator, validat
 from typing import List
 
 
-class Tile(BaseModel):
+class _Tile(BaseModel):
     x: int = Field(..., ge=0, description="X-coordinate of the tile (must be >= 0)")
     y: int = Field(..., ge=0, description="Y-coordinate of the tile (must be >= 0)")
     walkable: bool = Field(..., description="True if the tile is walkable, False otherwise")
 
 
-class JSONmapData(BaseModel):
+class _JSONmapData(BaseModel):
     rows: int = Field(..., gt=0, description="Number of rows in the map (must be > 0)")
     cols: int = Field(..., gt=0, description="Number of columns in the map (must be > 0)")
-    tiles: List[Tile] = Field(..., description="List of tiles defining the map layout")
+    tiles: List[_Tile] = Field(..., description="List of tiles defining the map layout")
 
     @model_validator(mode="after")
     def validate_map_data(cls, model):
@@ -35,7 +35,7 @@ class JSONmapData(BaseModel):
         return model
 
 
-class TXTmapData(BaseModel):
+class _TXTmapData(BaseModel):
     rows: int = Field(..., gt=0, description="Number of rows in the map (must be > 0)")
     cols: int = Field(..., gt=0, description="Number of columns in the map (must be > 0)")
     grid: List[str] = Field(..., description="List of strings representing the map rows")
@@ -57,44 +57,36 @@ class TXTmapData(BaseModel):
         return grid
 
 
-class Map:
-    def __init__(self):
-        self._map = None
-        self._rows = None
-        self._cols = None
+class Map(BaseModel):
 
-    def get_map(self):
-        """Get the map in which the robot will move."""
-        return self._map
+    map: List[List[bool]] = Field(..., description="2D matrix representing the map", frozen=True)
+    rows: int = Field(..., ge=0, description="The number of map's row must be greater than zero", frozen=True)
+    cols: int = Field(..., ge=0, description="The number of map's column must be greater than zero", frozen=True)
 
-    def rows_num(self):
-        """Get the number of rows of the map."""
-        return self._rows
-
-    def cols_num(self):
-        """Get the number of columns of the map."""
-        return self._cols
-
-    def load_from_json(self, json_data):
+    @classmethod
+    def load_from_json(cls, json_data):
         """Parses, validate and loads map data from a JSON file."""
         try:
             if isinstance(json_data, str):
                 json_data = json.loads(json_data)
 
             # Validate the JSON structure with Pydantic
-            map_data = JSONmapData(**json_data)
+            map_data = _JSONmapData(**json_data)
 
-            self._rows = map_data.rows
-            self._cols = map_data.cols
-            self._map = [[False] * self._cols for _ in range(self._rows)]
+            rows = map_data.rows
+            cols = map_data.cols
+            map = [[False] * cols for _ in range(rows)]
 
             for tile in map_data.tiles:
-                self._map[tile.y][tile.x] = tile.walkable
+                map[tile.y][tile.x] = tile.walkable
+
+            return cls(map=map, rows=rows, cols=cols)
 
         except (ValidationError, ValueError) as e:
             raise ValueError(f"Failed to load map from JSON: {e}")
 
-    def load_from_txt(self, txt_data):
+    @classmethod
+    def load_from_txt(cls, txt_data):
         """Parses, validate and loads map data from a TXT file."""
         try:
             lines = txt_data.strip().splitlines()
@@ -104,22 +96,24 @@ class Map:
                 raise ValueError("The file is empty.")
 
             # Validate the TXT structure with Pydantic
-            txt_map_data = TXTmapData(rows=len(lines), cols=len(lines[0]), grid=lines)
+            txt_map_data = _TXTmapData(rows=len(lines), cols=len(lines[0]), grid=lines)
 
-            self._rows = txt_map_data.rows
-            self._cols = txt_map_data.cols
+            rows = txt_map_data.rows
+            cols = txt_map_data.cols
 
-            self._map = [[char == 'o' for char in row] for row in txt_map_data.grid]
+            map = [[char == 'o' for char in row] for row in txt_map_data.grid]
+
+            return cls(map=map, rows=rows, cols=cols)
 
         except (ValidationError, ValueError) as e:
             raise ValueError(f"Failed to load map from TXT: {e}")
 
     def is_walkable(self, x: int, y: int) -> bool:
         """Checks if a given tile is walkable."""
-        if self._map is None or self._rows is None or self._cols is None:
+        if self.map is None or self.rows is None or self.cols is None:
             raise ValueError("Map is not initialized.")
 
-        if not (0 <= x < self._cols and 0 <= y < self._rows):
+        if not (0 <= x < self.cols and 0 <= y < self.rows):
             raise ValueError("Coordinates out of bounds.")
 
-        return self._map[y][x]
+        return self.map[y][x]

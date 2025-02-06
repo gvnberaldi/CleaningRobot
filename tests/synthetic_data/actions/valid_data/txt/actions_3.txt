@@ -1,0 +1,4 @@
+15 25
+north 10
+east 5
+south 7

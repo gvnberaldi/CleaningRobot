@@ -1,0 +1,8 @@
+<robot>
+  <x>10</x>
+  <y>20</y>
+  <actions>
+    <action direction="north" steps="5"/>
+    <action direction="east" steps="3"/>
+  </actions>
+</robot>
