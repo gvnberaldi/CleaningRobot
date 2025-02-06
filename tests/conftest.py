@@ -8,13 +8,13 @@ data_dir = os.path.join(current_file_dir, 'synthetic_data')
 
 
 @pytest.fixture
-def valid_txt_files() -> list:
+def valid_txt_files(request) -> list:
     """
-    Fixture that provides valid text map files for testing.
-    Reads and returns a list of valid .txt files.
+    Fixture that provides valid TXT files for testing.
+    Reads and returns a list of valid_data .txt files.
     """
 
-    valid_txt_path = os.path.join(data_dir, 'valid_data/txt')
+    valid_txt_path = os.path.join(data_dir, request.param)
     txt_files = []
     for file_name in os.listdir(valid_txt_path):
         if file_name.endswith('.txt'):
@@ -24,12 +24,12 @@ def valid_txt_files() -> list:
 
 
 @pytest.fixture
-def valid_json_files() -> list:
+def valid_json_files(request) -> list:
     """
-    Fixture that provides valid JSON map files for testing.
-    Reads and returns a list of valid .json files.
+    Fixture that provides valid JSON files for testing.
+    Reads and returns a list of valid_data .json files.
     """
-    valid_json_path = os.path.join(data_dir, 'valid_data/json')
+    valid_json_path = os.path.join(data_dir, request.param)
     json_files = []
     for file_name in os.listdir(valid_json_path):
         if file_name.endswith('.json'):
@@ -39,12 +39,12 @@ def valid_json_files() -> list:
 
 
 @pytest.fixture
-def invalid_txt_files() -> list:
+def invalid_txt_files(request) -> list:
     """
-    Fixture that provides invalid text map files for testing.
+    Fixture that provides invalid TXT files for testing.
     Reads and returns a list of invalid .txt files.
     """
-    invalid_txt_path = os.path.join(data_dir, 'invalid_data/txt')
+    invalid_txt_path = os.path.join(data_dir, request.param)
     txt_files = []
     for file_name in os.listdir(invalid_txt_path):
         with open(os.path.join(invalid_txt_path, file_name), 'r') as file:
@@ -53,12 +53,12 @@ def invalid_txt_files() -> list:
 
 
 @pytest.fixture
-def invalid_json_files() -> list:
+def invalid_json_files(request) -> list:
     """
-    Fixture that provides invalid JSON map files for testing.
+    Fixture that provides invalid JSON files for testing.
     Reads and returns a list of invalid .json files.
     """
-    invalid_json_path = os.path.join(data_dir, 'invalid_data/json')
+    invalid_json_path = os.path.join(data_dir, request.param)
     json_files = []
     for file_name in os.listdir(invalid_json_path):
         with open(os.path.join(invalid_json_path, file_name), 'r') as file:
