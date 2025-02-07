@@ -1,8 +1,11 @@
 import csv
 import os
+from threading import Lock
+from typing import ClassVar
+
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Interval
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
 
@@ -12,11 +15,11 @@ Base = declarative_base()
 
 class _DatabaseConfig(BaseModel):
     """ Database configuration for connection. """
-    host: str = Field(..., env="DB_HOST", frozen=True)
-    port: int = Field(..., env="DB_PORT", frozen=True)
-    user: str = Field(..., env="DB_USER", frozen=True)
-    password: str = Field(..., env="DB_PASSWORD", frozen=True)
-    dbname: str = Field(..., env="DB_NAME", frozen=True)
+    host: str = Field("localhost", frozen=True)
+    port: int = Field(5431, frozen=True)
+    user: str = Field("test", frozen=True)
+    password: str = Field("test", frozen=True)
+    dbname: str = Field("test", frozen=True)
 
     @property
     def db_url(self) -> str:
@@ -43,27 +46,30 @@ class Database(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    # Singleton instance and lock for thread safety
+    _instance: ClassVar['Database'] = None
+    _lock: ClassVar[Lock] = Lock()
+
     @classmethod
     def connect(cls) -> "Database":
-        """Class method to connect to the database and return an instance if successful."""
-        # Load configuration directly from environment variables
-        config = _DatabaseConfig()
-
-        try:
-            # Use the db_url property of DatabaseConfig to construct the engine
-            engine = create_engine(config.db_url, echo=True)
-
-            # Create session factory
-            session_factory = sessionmaker(bind=engine)
-
-            # Create a session
-            session = session_factory()
-
-            # Return a new instance with the session
-            db_instance = cls(config=config, session=session)
-            return db_instance
-        except Exception as e:
-            raise Exception(f"Error connecting to database: {e}")
+        """Singleton class method to connect to the database and return an instance if successful."""
+        if cls._instance is None:
+            with cls._lock:  # Ensure thread safety
+                if cls._instance is None:
+                    # Load configuration directly from environment variables
+                    config = _DatabaseConfig()
+                    try:
+                        # Use the db_url property of DatabaseConfig to construct the engine
+                        engine = create_engine(config.db_url)
+                        # Create session factory
+                        session_factory = sessionmaker(bind=engine)
+                        # Create a session
+                        session = session_factory()
+                        # Return a new instance with the session
+                        cls._instance = cls(config=config, session=session)
+                    except Exception as e:
+                        raise Exception(f"Error connecting to database: {e}")
+        return cls._instance
 
     def create_table(self):
         """Create the Cleaning Sessions table if it does not exist."""
@@ -92,7 +98,10 @@ class Database(BaseModel):
                 writer.writerow([column.name for column in CleaningSession.__table__.columns])
                 # Write the rows of the history
                 for session in history:
-                    writer.writerow([getattr(session, column.name) for column in CleaningSession.__table__.columns])
+                    writer.writerow([
+                        int(getattr(session, column.name)) if isinstance(getattr(session, column.name), (int, float))
+                        else getattr(session, column.name) for column in CleaningSession.__table__.columns
+                    ])
 
         except Exception as e:
             raise Exception(f"Error fetching history: {e}")
@@ -112,6 +121,7 @@ class Database(BaseModel):
         try:
             if self.session:
                 self.session.close()
+                Database._instance = None  # Reset instance after closing
         except Exception as e:
             raise Exception(f"Error closing session: {e}")
 

@@ -2,15 +2,12 @@ import os
 import json
 import sys
 from datetime import datetime, timedelta
-
 import pytest
-from pytest_postgresql.factories import postgresql_noproc
 from sqlalchemy import create_engine
-from sqlalchemy.engine import url
 from sqlalchemy.orm import sessionmaker
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-from app.database import Base, CleaningSession
+from app.database import Base, CleaningSession, Database
 
 # Get the directory of the synthetic data for the tests
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -78,17 +75,11 @@ def invalid_json_files(request) -> list:
 
 @pytest.fixture(scope="function")
 def db_connection():
-    """Fixture to provide a temporary test database session."""
-    database_url = "postgresql://test:test@localhost:5431/test"
-    engine = create_engine(database_url)
-
-    Base.metadata.create_all(engine)  # Create all tables
-    session_factory = sessionmaker(bind=engine)
-    session = session_factory()  # Provide the session to the test function
-    yield session
+    db_instance = Database.connect()
+    yield db_instance  # Provide the database instance to the test function
     # Cleanup: Close session and drop tables
-    session.close()
-    Base.metadata.drop_all(engine)
+    db_instance.close()
+    Base.metadata.drop_all(db_instance.session.bind)
 
 
 @pytest.fixture
