@@ -1,10 +1,8 @@
-import csv
-import os
 from threading import Lock
 from typing import ClassVar
 
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Interval
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Interval, make_url
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
@@ -15,11 +13,11 @@ Base = declarative_base()
 
 class _DatabaseConfig(BaseModel):
     """ Database configuration for connection. """
-    host: str = Field("localhost", frozen=True)
-    port: int = Field(5431, frozen=True)
-    user: str = Field("test", frozen=True)
-    password: str = Field("test", frozen=True)
-    dbname: str = Field("test", frozen=True)
+    host: str = Field("localhost", frozen=True, description="The hostname or IP address of the database server.")
+    port: int = Field(5431, frozen=True, description="The port number for the database connection.")
+    user: str = Field("test", frozen=True, description="The username for authenticating to the database.")
+    password: str = Field("test", frozen=True, description="The password for the database user.")
+    dbname: str = Field("test", frozen=True, description="The name of the database to connect to.")
 
     @property
     def db_url(self) -> str:
@@ -50,6 +48,20 @@ class Database(BaseModel):
     _instance: ClassVar['Database'] = None
     _lock: ClassVar[Lock] = Lock()
 
+    def __init__(self, config: _DatabaseConfig, session: Session):
+        super().__init__(config=config, session=session)
+
+        # Validates if the session's database connection matches the configuration.
+        engine_url = make_url(str(self.session.bind.url))
+        expected_url = make_url(self.config.db_url)
+        if (engine_url.drivername != expected_url.drivername or
+            engine_url.username != expected_url.username or
+            engine_url.host != expected_url.host or
+            engine_url.port != expected_url.port or
+            engine_url.database != expected_url.database
+        ):
+            raise ValueError(f"Incompatible session: expected {expected_url}, but got {engine_url}")
+
     @classmethod
     def connect(cls) -> "Database":
         """Singleton class method to connect to the database and return an instance if successful."""
@@ -79,29 +91,14 @@ class Database(BaseModel):
         except Exception as e:
             raise Exception(f"Error creating table: {e}")
 
-    def get_history(self) -> None:
+    def get_history(self) -> list:
         """
         Retrieve all the rows from the Cleaning Sessions table and
         write to a CSV file in the current directory.
         """
         try:
             history = self.session.query(CleaningSession).all()
-
-            # Get the current working directory
-            current_directory = os.getcwd()
-            file_path = os.path.join(current_directory, "cleaning_sessions.csv")
-
-            # Write the data to a CSV file in the current directory
-            with open(file_path, mode='w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                # Write the header (column names)
-                writer.writerow([column.name for column in CleaningSession.__table__.columns])
-                # Write the rows of the history
-                for session in history:
-                    writer.writerow([
-                        int(getattr(session, column.name)) if isinstance(getattr(session, column.name), (int, float))
-                        else getattr(session, column.name) for column in CleaningSession.__table__.columns
-                    ])
+            return history
 
         except Exception as e:
             raise Exception(f"Error fetching history: {e}")

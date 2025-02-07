@@ -7,17 +7,17 @@ class _Action(BaseModel):
     """
     Represents a single action taken by the robot, including the direction and number of steps.
     """
-    direction: Literal["north", "east", "south", "west"]
-    steps: int = Field(..., ge=0, description="Number of steps must be greater than zero")
+    direction: Literal["north", "east", "south", "west"] = Field(..., description="Direction of the robot movement.")
+    steps: int = Field(..., ge=0, description="Number of steps in a specific direction. Must be greater than or equal to zero")
 
 
 class RobotPath(BaseModel):
     """
     Represents the robot's path, starting from coordinates (x, y) and a list of actions to follow.
     """
-    x: int = Field(..., ge=0, description="X coordinate must be greater than zero", frozen=True)
-    y: int = Field(..., ge=0, description="Y coordinate must be greater than zero", frozen=True)
-    actions: List[_Action] = Field(..., description="List of actions to follow", frozen=True)
+    x: int = Field(..., ge=0, description="Starting x coordinate of the path. Must be greater than or equal to zero", frozen=True)
+    y: int = Field(..., ge=0, description="Starting y coordinate of the path. Must be greater than or equal to zero", frozen=True)
+    actions: List[_Action] = Field(..., description="Ordered list of actions to follow", frozen=True)
 
     @classmethod
     def load_from_json(cls, data):
@@ -40,7 +40,6 @@ class RobotPath(BaseModel):
         """
         try:
             lines = file.splitlines()
-            print(lines)
             # Parse starting position (first line contains x, y)
             x, y = map(int, lines[0].strip().split())
             actions = []

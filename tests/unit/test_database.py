@@ -34,42 +34,23 @@ class TestDatabaseMethods:
         """Test retrieving all cleaning sessions from the database."""
         db_connection.create_table()
         db_connection.save_session(valid_cleaning_session)
-        db_connection.get_history()
-        # Check if the CSV file was created
-        file_path = os.path.join(os.getcwd(), "cleaning_sessions.csv")
-        assert os.path.exists(file_path), "CSV file was not created."
 
-        # Read the content of the CSV file and validate the data
-        with open(file_path, mode='r', newline='', encoding='utf-8') as file:
-            reader = csv.reader(file)
-            rows = list(reader)
-            # Assert that there's at least one row (header + data)
-            assert len(rows) > 1, "CSV file is empty or does not contain data."
-            # Check the header matches the column names of CleaningSession
-            header = rows[0]
-            expected_header = [column.name for column in CleaningSession.__table__.columns]
-            assert header == expected_header, f"Header mismatch: {header} != {expected_header}"
-            # Check that the first row matches the data of the valid_cleaning_session
-            row_data = rows[1]  # The first row after the header
-            assert len(row_data) == len(expected_header), "Row data does not match column count."
+        # Retrieve the history (list of CleaningSession objects)
+        retrieved_sessions = db_connection.get_history()
 
-            # Extract the values from the valid_cleaning_session object and compare with the row
-            session_values = [
-                str(valid_cleaning_session.id),
-                valid_cleaning_session.session_start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                valid_cleaning_session.session_final_state,
-                str(valid_cleaning_session.number_of_actions),
-                str(valid_cleaning_session.number_of_cleaned_tiles),
-                str(valid_cleaning_session.duration)
-            ]
+        # Check if the retrieved sessions contain the valid_cleaning_session
+        assert len(retrieved_sessions) == 1, "No sessions retrieved."
 
-            # Assert that the row matches the values in valid_cleaning_session
-            assert row_data == session_values, f"Row data mismatch: {row_data} != {session_values}"
+        # Retrieve the first session and compare with the valid_cleaning_session
+        retrieved_session = retrieved_sessions[0]
 
-        # Delete the created CSV file after the test is complete
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            assert not os.path.exists(file_path), "CSV file was not deleted."
+        # Check that the retrieved session matches the inserted one
+        assert retrieved_session.id == valid_cleaning_session.id, "ID mismatch."
+        assert retrieved_session.session_start_time == valid_cleaning_session.session_start_time, "Start time mismatch."
+        assert retrieved_session.session_final_state == valid_cleaning_session.session_final_state, "State mismatch."
+        assert retrieved_session.number_of_actions == valid_cleaning_session.number_of_actions, "Actions mismatch."
+        assert retrieved_session.number_of_cleaned_tiles == valid_cleaning_session.number_of_cleaned_tiles, "Tiles mismatch."
+        assert retrieved_session.duration == valid_cleaning_session.duration, "Duration mismatch."
 
     def test_cleanup(self, db_connection):
         """Ensure the database session is properly cleaned after the test."""

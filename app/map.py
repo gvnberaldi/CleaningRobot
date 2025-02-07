@@ -5,14 +5,14 @@ from typing import List
 
 
 class _Tile(BaseModel):
-    x: int = Field(..., ge=0, description="X-coordinate of the tile (must be >= 0)")
-    y: int = Field(..., ge=0, description="Y-coordinate of the tile (must be >= 0)")
-    walkable: bool = Field(..., description="True if the tile is walkable, False otherwise")
+    x: int = Field(..., ge=0, description="x-coordinate of the tile. Must be greater than or equal to zero)")
+    y: int = Field(..., ge=0, description="Y-coordinate of the tile. Must be greater than or equal to zero")
+    walkable: bool = Field(..., description="Walkability of a tile: True if the tile is walkable, False otherwise")
 
 
 class _JSONmapData(BaseModel):
-    rows: int = Field(..., gt=0, description="Number of rows in the map (must be > 0)")
-    cols: int = Field(..., gt=0, description="Number of columns in the map (must be > 0)")
+    rows: int = Field(..., gt=0, description="Number of rows in the map. Must be greater than zero)")
+    cols: int = Field(..., gt=0, description="Number of columns in the map. Must be greater than zero")
     tiles: List[_Tile] = Field(..., description="List of tiles defining the map layout")
 
     @model_validator(mode="after")
@@ -36,9 +36,9 @@ class _JSONmapData(BaseModel):
 
 
 class _TXTmapData(BaseModel):
-    rows: int = Field(..., gt=0, description="Number of rows in the map (must be > 0)")
-    cols: int = Field(..., gt=0, description="Number of columns in the map (must be > 0)")
-    grid: List[str] = Field(..., description="List of strings representing the map rows")
+    rows: int = Field(..., gt=0, description="Number of rows in the map. Must be greater than zero")
+    cols: int = Field(..., gt=0, description="Number of columns in the map. Must be greater than zero")
+    grid: List[str] = Field(..., description="List of strings representing the map layout")
 
     @field_validator("grid")
     def validate_grid(cls, grid):
@@ -59,9 +59,19 @@ class _TXTmapData(BaseModel):
 
 class Map(BaseModel):
 
-    map: List[List[bool]] = Field(..., description="2D matrix representing the map", frozen=True)
-    rows: int = Field(..., ge=0, description="The number of map's row must be greater than zero", frozen=True)
-    cols: int = Field(..., ge=0, description="The number of map's column must be greater than zero", frozen=True)
+    map: List[List[bool]] = Field(..., description="2D matrix of boolean representing the map", frozen=True)
+    rows: int = Field(..., gt=0, description="Number of map's row. Must be greater than zero", frozen=True)
+    cols: int = Field(..., gt=0, description="Number of map's column. Must be greater than zero", frozen=True)
+
+    def __init__(self, map: List[List[bool]], rows: int, cols: int):
+        super().__init__(map=map, rows=rows, cols=cols)
+
+        if len(self.map) != self.rows:
+            raise ValueError(
+                f"Number of rows in the map does not match the specified 'rows' value.")
+        if any(len(row) != self.cols for row in self.map):
+            raise ValueError(
+                f"One or more rows in the map have a different number of columns than the specified 'cols' value.")
 
     @classmethod
     def load_from_json(cls, json_data):
