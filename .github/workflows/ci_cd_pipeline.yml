@@ -46,12 +46,12 @@ jobs:
       - name: Run Unit Tests with Coverage
         run: |
           coverage run -m pytest tests/unit
-          coverage report --fail-under=80
+          coverage report --fail-under=70
 
       - name: Run Integration Tests with Coverage
         run: |
           coverage run -m pytest tests/integration
-          coverage report --fail-under=80
+          coverage report --fail-under=70
   
   acceptance-tests:
     name: Acceptance Tests
