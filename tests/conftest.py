@@ -3,11 +3,12 @@ import json
 import sys
 from datetime import datetime, timedelta
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from app.database import Base, CleaningSession, Database
+from app.cleaning_robot import BaseCleaningRobot
+from app.map import Map
+from app.robot_path import RobotPath
 
 # Get the directory of the synthetic data for the tests
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -71,6 +72,34 @@ def invalid_json_files(request) -> list:
         with open(os.path.join(invalid_json_path, file_name), 'r') as file:
             json_files.append(file.read())
     return json_files
+
+
+@pytest.fixture
+def map_actions_files(request) -> tuple:
+    """
+    Fixture providing a tuple of TXT map and action file.
+    """
+    map_path, actions_path = request.param
+    print(map_path, actions_path)
+    map_file = os.path.join(data_dir, map_path)
+    actions_file = os.path.join(data_dir, actions_path)
+    with open(map_file, 'r') as f:
+        map_data = f.read()
+    with open(actions_file, 'r') as f:
+        actions_data = f.read()
+    return map_data, actions_data
+
+
+@pytest.fixture
+def robot(db_connection, map_actions_files):
+    """
+    Fixture that returns an instantiated BaseCleaningRobot object.
+    """
+    map_file, action_file = map_actions_files
+    map_instance = Map.load_from_txt(map_file)
+    path_instance = RobotPath.load_from_txt(action_file)
+    robot_instance = BaseCleaningRobot(map=map_instance, path=path_instance, database_conn=db_connection)
+    return robot_instance
 
 
 @pytest.fixture(scope="function")

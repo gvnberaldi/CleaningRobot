@@ -1,3 +1,2 @@
-3 5
-south 2
-west 4
+4 3
+east 5

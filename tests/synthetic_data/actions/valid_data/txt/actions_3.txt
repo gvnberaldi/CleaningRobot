@@ -1,4 +1,6 @@
-15 25
-north 10
-east 5
-south 7
+6 2
+east 4
+south 1
+west 2
+south 1
+west 5
