@@ -13,11 +13,11 @@ Base = declarative_base()
 
 class _DatabaseConfig(BaseModel):
     """ Database configuration for connection. """
-    host: str = Field("localhost", frozen=True, description="The hostname or IP address of the database server.")
-    port: int = Field(5431, frozen=True, description="The port number for the database connection.")
-    user: str = Field("test", frozen=True, description="The username for authenticating to the database.")
-    password: str = Field("test", frozen=True, description="The password for the database user.")
-    dbname: str = Field("test", frozen=True, description="The name of the database to connect to.")
+    host: str = Field(default="localhost", description="The hostname or IP address of the database server.")
+    port: int = Field(default=5431, description="The port number for the database connection.")
+    user: str = Field(default="test", description="The username for authenticating to the database.")
+    password: str = Field(default="test", description="The password for the database user.")
+    dbname: str = Field(default="test", description="The name of the database to connect to.")
 
     @property
     def db_url(self) -> str:
@@ -40,48 +40,37 @@ class CleaningSession(Base):
 class Database(BaseModel):
     """ Database class for managing the database connection. """
     config: _DatabaseConfig = Field(..., description="Database configuration", frozen=True)
-    session: Session = Field(..., description="SQLAlchemy session", frozen=True)
+    session: Session = Field(..., description="Database session", frozen=True)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    # Singleton instance and lock for thread safety
-    _instance: ClassVar['Database'] = None
-    _lock: ClassVar[Lock] = Lock()
+    # Singleton pattern: only one database connection
+    def __new__(cls, config: _DatabaseConfig):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Database, cls).__new__(cls)
+        return cls.instance
 
-    def __init__(self, config: _DatabaseConfig, session: Session):
-        super().__init__(config=config, session=session)
-
-        # Validates if the session's database connection matches the configuration.
-        engine_url = make_url(str(self.session.bind.url))
-        expected_url = make_url(self.config.db_url)
-        if (engine_url.drivername != expected_url.drivername or
-            engine_url.username != expected_url.username or
-            engine_url.host != expected_url.host or
-            engine_url.port != expected_url.port or
-            engine_url.database != expected_url.database
-        ):
-            raise ValueError(f"Incompatible session: expected {expected_url}, but got {engine_url}")
+    def __init__(self, config: _DatabaseConfig):
+        try:
+            # Use the db_url property of DatabaseConfig to construct the engine
+            engine = create_engine(config.db_url)
+            # Create session factory
+            session_factory = sessionmaker(bind=engine)
+            # Create a session
+            session = session_factory()
+            # Return a new instance with the session
+            super().__init__(config=config, session=session)
+        except Exception as e:
+            raise Exception(f"Error connecting to database: {e}")
 
     @classmethod
     def connect(cls) -> "Database":
-        """Singleton class method to connect to the database and return an instance if successful."""
-        if cls._instance is None:
-            with cls._lock:  # Ensure thread safety
-                if cls._instance is None:
-                    # Load configuration directly from environment variables
-                    config = _DatabaseConfig()
-                    try:
-                        # Use the db_url property of DatabaseConfig to construct the engine
-                        engine = create_engine(config.db_url)
-                        # Create session factory
-                        session_factory = sessionmaker(bind=engine)
-                        # Create a session
-                        session = session_factory()
-                        # Return a new instance with the session
-                        cls._instance = cls(config=config, session=session)
-                    except Exception as e:
-                        raise Exception(f"Error connecting to database: {e}")
-        return cls._instance
+        """Class method to connect to the database and return an instance if successful."""
+        config = _DatabaseConfig()  # Load configuration
+        try:
+            return cls(config=config)
+        except Exception as e:
+            raise Exception(f"Error connecting to database: {e}")
 
     def create_table(self):
         """Create the Cleaning Sessions table if it does not exist."""

@@ -1,3 +1,4 @@
+import json
 import sys
 import os
 import pytest
@@ -26,8 +27,10 @@ class TestValidRobotPathData:
         Args: List of valid robot path data in TXT format.
         """
 
-        for txt_data in valid_txt_files:
-            robot_path = RobotPath.load_from_txt(txt_data)
+        for file in valid_txt_files:
+            robot_path = RobotPath.load(file)
+            file.stream.seek(0)
+            txt_data = file.read().decode('utf-8')
 
             # Extract expected x, y coordinates and actions from txt_data
             lines = txt_data.splitlines()
@@ -55,8 +58,10 @@ class TestValidRobotPathData:
         Args: List of valid robot path data in JSON format.
         """
 
-        for json_data in valid_json_files:
-            robot_path = RobotPath.load_from_json(json_data)
+        for file in valid_json_files:
+            robot_path = RobotPath.load(file)
+            file.stream.seek(0)
+            json_data = json.load(file)
 
             # Extract expected coordinates and actions from the JSON data
             expected_x = json_data["x"]
@@ -87,9 +92,9 @@ class TestInvalidRobotPathData:
 
         Args: invalid_txt_files (list): Invalid text robot path data for testing failure.
         """
-        for txt_data in invalid_txt_files:
+        for file in invalid_txt_files:
             with pytest.raises(ValueError) as e:
-                RobotPath.load_from_txt(txt_data)
+                RobotPath.load(file)
 
             # Assert that a ValueError was raised
             assert e.type == ValueError
@@ -104,10 +109,10 @@ class TestInvalidRobotPathData:
         Args: invalid_json_files (list): Invalid JSON robot path data for testing failure.
         """
 
-        for json_data in invalid_json_files:
+        for file in invalid_json_files:
 
             with pytest.raises(ValueError) as e:
-                RobotPath.load_from_json(json_data)
+                RobotPath.load(file)
 
             # Assert that a ValueError was raised
             assert e.type == ValueError

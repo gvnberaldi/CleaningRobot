@@ -43,15 +43,10 @@ jobs:
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
-      - name: Run Unit Tests with Coverage
+      - name: Run Unit and Integration Tests with Coverage
         run: |
-          coverage run -m pytest tests/unit
-          coverage report --fail-under=70
-
-      - name: Run Integration Tests with Coverage
-        run: |
-          coverage run -m pytest tests/integration
-          coverage report --fail-under=70
+          coverage run -m pytest tests/unit tests/integration
+          coverage report --fail-under=90
   
   acceptance-tests:
     name: Acceptance Tests

@@ -4,16 +4,17 @@ from pydantic import BaseModel, Field, ValidationError, model_validator, validat
 from typing import List
 
 
-class _Tile(BaseModel):
-    x: int = Field(..., ge=0, description="x-coordinate of the tile. Must be greater than or equal to zero)")
-    y: int = Field(..., ge=0, description="Y-coordinate of the tile. Must be greater than or equal to zero")
-    walkable: bool = Field(..., description="Walkability of a tile: True if the tile is walkable, False otherwise")
-
-
 class _JSONmapData(BaseModel):
+    """JSON file representing a grid map with defined dimensions and tiles."""
+    class Tile(BaseModel):
+        """Represents a single tile in the map with coordinates and walkability."""
+        x: int = Field(..., ge=0, description="x-coordinate of the tile. Must be greater than or equal to zero)")
+        y: int = Field(..., ge=0, description="Y-coordinate of the tile. Must be greater than or equal to zero")
+        walkable: bool = Field(..., description="Walkability of a tile: True if the tile is walkable, False otherwise")
+
     rows: int = Field(..., gt=0, description="Number of rows in the map. Must be greater than zero)")
     cols: int = Field(..., gt=0, description="Number of columns in the map. Must be greater than zero")
-    tiles: List[_Tile] = Field(..., description="List of tiles defining the map layout")
+    tiles: List[Tile] = Field(..., description="List of tiles defining the map layout")
 
     @model_validator(mode="after")
     def validate_map_data(cls, model):
@@ -36,6 +37,7 @@ class _JSONmapData(BaseModel):
 
 
 class _TXTmapData(BaseModel):
+    """TXT file representing a grid map with defined dimensions and tiles."""
     rows: int = Field(..., gt=0, description="Number of rows in the map. Must be greater than zero")
     cols: int = Field(..., gt=0, description="Number of columns in the map. Must be greater than zero")
     grid: List[str] = Field(..., description="List of strings representing the map layout")
@@ -58,7 +60,7 @@ class _TXTmapData(BaseModel):
 
 
 class Map(BaseModel):
-
+    """Represents the map as 2D boolean grid map with defined dimensions."""
     map: List[List[bool]] = Field(..., description="2D matrix of boolean representing the map", frozen=True)
     rows: int = Field(..., gt=0, description="Number of map's row. Must be greater than zero", frozen=True)
     cols: int = Field(..., gt=0, description="Number of map's column. Must be greater than zero", frozen=True)
@@ -74,11 +76,20 @@ class Map(BaseModel):
                 f"One or more rows in the map have a different number of columns than the specified 'cols' value.")
 
     @classmethod
-    def load_from_json(cls, json_data):
+    def load(cls, file):
+        """Parses, validate and loads map data from a TXT or JSON file."""
+        if file.filename.endswith('.txt'):
+            return cls.__load_from_txt(file)
+        elif file.filename.endswith('.json'):
+            return cls.__load_from_json(file)
+        else:
+            raise ValueError(f"Unsupported file format: {file.filename}. Only .txt and .json files are supported.")
+
+    @classmethod
+    def __load_from_json(cls, file):
         """Parses, validate and loads map data from a JSON file."""
         try:
-            if isinstance(json_data, str):
-                json_data = json.loads(json_data)
+            json_data = json.load(file)
 
             # Validate the JSON structure with Pydantic
             map_data = _JSONmapData(**json_data)
@@ -96,9 +107,10 @@ class Map(BaseModel):
             raise ValueError(f"Failed to load map from JSON: {e}")
 
     @classmethod
-    def load_from_txt(cls, txt_data):
+    def __load_from_txt(cls, file):
         """Parses, validate and loads map data from a TXT file."""
         try:
+            txt_data = file.read().decode('utf-8')
             lines = txt_data.strip().splitlines()
 
             # Early validation for empty file

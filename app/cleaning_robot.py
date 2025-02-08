@@ -1,6 +1,6 @@
 import csv
+import io
 import json
-import os
 from typing import List, Dict
 from datetime import datetime
 from pydantic import Field, BaseModel
@@ -59,24 +59,24 @@ class CleaningRobot(ABC):
         """
         try:
             history = self.database_conn.get_history()
-            # Get the current working directory
-            current_directory = os.getcwd()
-            file_path = os.path.join(current_directory, "cleaning_sessions.csv")
-
-            # Write the data to a CSV file in the current directory
-            with open(file_path, mode='w', newline='', encoding='utf-8') as file:
-                writer = csv.writer(file)
-                # Write the header (column names)
-                writer.writerow([column.name for column in CleaningSession.__table__.columns])
-                # Write the rows of the history
-                for session in history:
-                    writer.writerow([
-                        int(getattr(session, column.name)) if isinstance(getattr(session, column.name), (int, float))
-                        else getattr(session, column.name) for column in CleaningSession.__table__.columns
-                    ])
+            # Create an in-memory string buffer
+            csv_buffer = io.StringIO()
+            writer = csv.writer(csv_buffer)
+            # Write the header (column names)
+            writer.writerow([column.name for column in CleaningSession.__table__.columns])
+            # Write the rows of the history
+            for session in history:
+                writer.writerow([
+                    int(getattr(session, column.name)) if isinstance(getattr(session, column.name), (int, float))
+                    else getattr(session, column.name) for column in CleaningSession.__table__.columns
+                ])
+            # Get the CSV content as string
+            csv_content = csv_buffer.getvalue()
+            csv_buffer.close()
+            return csv_content
 
         except Exception as e:
-            raise Exception(f"An error occurred while writing the cleaning sessions to CSV: {e}")
+            raise Exception(f"An error occurred while generating the CSV string: {e}")
 
     @abstractmethod
     def clean(self):
