@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # Flask app container
+  flask_app:
+    build: .
+    container_name: app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - postgres
+
+  # PostgreSQL database container
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test
+    ports:
+      - "5431:5432"
+    volumes:
+      - data:/var/lib/postgresql/data
+
+volumes:
+  data:
+    driver: local
