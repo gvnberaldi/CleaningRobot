@@ -4,7 +4,7 @@ from threading import Lock
 from typing import ClassVar
 
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Interval, make_url
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Interval, make_url, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session
@@ -13,13 +13,13 @@ from sqlalchemy.orm.session import Session
 Base = declarative_base()
 
 
-class _DatabaseConfig(BaseModel):
+class DatabaseConfig(BaseModel):
     """ Database configuration for connection. """
     host: str = Field(default="localhost", description="The hostname or IP address of the database server.")
-    port: int = Field(default=5431, description="The port number for the database connection.")
-    user: str = Field(default="test", description="The username for authenticating to the database.")
-    password: str = Field(default="test", description="The password for the database user.")
-    dbname: str = Field(default="test", description="The name of the database to connect to.")
+    port: int = Field(default=5430, description="The port number for the database connection.")
+    user: str = Field(default="user", description="The username for authenticating to the database.")
+    password: str = Field(default="root", description="The password for the database user.")
+    dbname: str = Field(default="postgres", description="The name of the database to connect to.")
 
     @property
     def db_url(self) -> str:
@@ -41,18 +41,22 @@ class CleaningSession(Base):
 
 class Database(BaseModel):
     """ Database class for managing the database connection. """
-    config: _DatabaseConfig = Field(..., description="Database configuration", frozen=True)
+    config: DatabaseConfig = Field(..., description="Database configuration", frozen=True)
     session: Session = Field(..., description="Database session", frozen=True)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    # Singleton pattern: only one database connection
-    def __new__(cls, config: _DatabaseConfig):
-        if not hasattr(cls, 'instance'):
-            cls.instance = super(Database, cls).__new__(cls)
-        return cls.instance
+    # Singleton pattern: only one database connection per configuration
+    _instances: ClassVar = {}
 
-    def __init__(self, config: _DatabaseConfig):
+    def __new__(cls, config: DatabaseConfig):
+        config_hash = hash(config.db_url)  # Use db_url as the unique key for the config
+        if config_hash not in cls._instances:
+            instance = super(Database, cls).__new__(cls)
+            cls._instances[config_hash] = instance
+        return cls._instances[config_hash]
+
+    def __init__(self, config: DatabaseConfig):
         try:
             # Use the db_url property of DatabaseConfig to construct the engine
             engine = create_engine(config.db_url)
@@ -66,9 +70,8 @@ class Database(BaseModel):
             raise Exception(f"Error connecting to database: {e}")
 
     @classmethod
-    def connect(cls) -> "Database":
+    def connect(cls, config: DatabaseConfig = DatabaseConfig()) -> "Database":
         """Class method to connect to the database and return an instance if successful."""
-        config = _DatabaseConfig()  # Load configuration
         try:
             return cls(config=config)
         except Exception as e:
@@ -88,7 +91,15 @@ class Database(BaseModel):
         write to a CSV file in the current directory.
         """
         try:
+            # Check if the table exists
+            inspector = inspect(self.session.bind)
+            if CleaningSession.__tablename__ not in inspector.get_table_names():
+                raise Exception("Error: Table 'CleaningSessions' does not exist.")
+
+            # Retrieve all rows
             history = self.session.query(CleaningSession).all()
+            if not history:
+                raise Exception("Error: No data found in the 'CleaningSessions' table.")
             csv_buffer = io.StringIO()
             writer = csv.writer(csv_buffer)
             # Write the header (column names)

@@ -111,7 +111,7 @@ class TestCleanEndpoint:
         client.post('/set-map', data={'file': map_file})
         response = client.post('/clean', data={'file': action_file})
         # Extract the cleaning report from the response
-        report = json.loads(response.get_json().get('report'))
+        report = response.get_json().get('report')
 
         # Check if the clean session was successful
         assert response.status_code == 200
@@ -125,7 +125,7 @@ class TestCleanEndpoint:
         client.post('/set-map', data={'file': map_file})
         response = client.post('/clean', data={'file': action_file})
         # Extract the cleaning report from the response
-        report = json.loads(response.get_json().get('report'))
+        report = response.get_json().get('report')
 
         # Check if the clean session status
         assert response.status_code == 200
@@ -140,7 +140,7 @@ class TestCleanEndpoint:
         client.post('/set-map', data={'file': map_file})
         response = client.post('/clean', data={'file': action_file})
         # Extract the cleaning report from the response
-        report = json.loads(response.get_json().get('report'))
+        report = response.get_json().get('report')
 
         # Check if the clean session status
         assert response.status_code == 200
@@ -182,6 +182,11 @@ class TestHistoryEndpoint:
         data_row = rows[1]
         assert data_row == expected_values, f"Data mismatch: {data_row} != {expected_values}"
 
-    def test_history_endpoint_error(self, client, db_connection, valid_cleaning_session):
+    def test_history_endpoint_error_no_table(self, client, db_connection, valid_cleaning_session):
+        response = client.get('/history')
+        assert response.status_code == 500
+
+    def test_history_endpoint_error_no_value(self, client, db_connection, valid_cleaning_session):
+        db_connection.create_table()
         response = client.get('/history')
         assert response.status_code == 500

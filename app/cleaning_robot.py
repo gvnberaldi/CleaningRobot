@@ -105,4 +105,4 @@ class BaseCleaningRobot(BaseModel, CleaningRobot):
 
         report = {"cleaned_tiles": self.cleaned_tiles, "status": "completed", "error": None}
         self._store_session(report, start_time, performed_actions)
-        return json.dumps(report, indent=4)
+        return json.dumps(report, indent=0)
