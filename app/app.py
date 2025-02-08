@@ -54,18 +54,21 @@ def clean():
 
 @my_app.route('/history', methods=['GET'])
 def history():
-    if current_app.config['TESTING']:
-        database_conn = current_app.config['DATABASE']
-    else:
-        database_conn = Database.connect()
+    try:
+        if current_app.config['TESTING']:
+            database_conn = current_app.config['DATABASE']
+        else:
+            database_conn = Database.connect()
 
-    history = database_conn.get_history()
-    # Return the CSV as a downloadable response
-    return Response(
-        history,
-        mimetype='text/csv',
-        headers={'Content-Disposition': 'attachment;filename=history.csv'}
-    )
+        history = database_conn.get_history()
+        # Return the CSV as a downloadable response
+        return Response(
+            history,
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment;filename=history.csv'}
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__':

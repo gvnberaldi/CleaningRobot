@@ -150,7 +150,7 @@ class TestCleanEndpoint:
 
 
 class TestHistoryEndpoint:
-    def test_history_endpoint(self, client, db_connection, valid_cleaning_session):
+    def test_history_endpoint_success(self, client, db_connection, valid_cleaning_session):
         """Test the /history endpoint for returning a valid CSV response."""
         # Insert the valid session into the database
         db_connection.create_table()
@@ -181,3 +181,7 @@ class TestHistoryEndpoint:
         # Compare the retrieved data row with the expected values
         data_row = rows[1]
         assert data_row == expected_values, f"Data mismatch: {data_row} != {expected_values}"
+
+    def test_history_endpoint_error(self, client, db_connection, valid_cleaning_session):
+        response = client.get('/history')
+        assert response.status_code == 500
