@@ -1,3 +1,4 @@
+import json
 import sys
 import os
 import pytest
@@ -23,19 +24,19 @@ class TestValidMapData:
 
         Args: valid_txt_files (list): Valid text map data for testing.
         """
-
-        for txt_data in valid_txt_files:
-            map = Map.load_from_txt(txt_data)
+        for file in valid_txt_files:
+            map = Map.load(file)
+            file.stream.seek(0)
+            text_data = file.read().decode('utf-8')
 
             # Check that rows and columns are correctly set
             assert map.rows > 0
             assert map.cols > 0
-
             # Check if the map is correctly loaded (walkable and non-walkable tiles)
             for y in range(map.rows):
                 for x in range(map.cols):
                     is_walkable = map.is_walkable(x, y)
-                    char = txt_data.splitlines()[y][x]
+                    char = text_data.splitlines()[y][x]
                     expected_walkable = char == 'o'
                     assert is_walkable == expected_walkable
 
@@ -47,8 +48,10 @@ class TestValidMapData:
 
         Args: valid_json_files (list): Valid JSON map data for testing.
         """
-        for json_data in valid_json_files:
-            map = Map.load_from_json(json_data)
+        for file in valid_json_files:
+            map = Map.load(file)
+            file.stream.seek(0)
+            json_data = json.load(file)
 
             # Check that rows and columns are correctly set
             assert map.rows == json_data["rows"]
@@ -76,15 +79,15 @@ class TestInvalidMapData:
 
         Args: invalid_txt_files (list): Invalid text map data for testing failure.
         """
-        for txt_data in invalid_txt_files:
+        for file in invalid_txt_files:
             with pytest.raises(ValueError) as e:
-                Map.load_from_txt(txt_data)
+                Map.load(file)
 
             # Assert that a ValueError was raised
             assert e.type == ValueError
             print(f"Error: {e.value}")
 
-    @pytest.mark.parametrize("invalid_json_files", ["maps/invalid_data/txt"], indirect=True)
+    @pytest.mark.parametrize("invalid_json_files", ["maps/invalid_data/json"], indirect=True)
     def test_invalid_json_files(self, invalid_json_files: list):
         """
         Test handling of invalid JSON map files, ensuring ValueError is raised
@@ -93,9 +96,9 @@ class TestInvalidMapData:
         Args: invalid_json_files (list): Invalid JSON map data for testing failure.
         """
 
-        for json_data in invalid_json_files:
+        for file in invalid_json_files:
             with pytest.raises(ValueError) as e:
-                Map.load_from_json(json_data)
+                Map.load(file)
 
             # Assert that a ValueError was raised
             assert e.type == ValueError
