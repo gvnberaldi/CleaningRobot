@@ -1,3 +1,5 @@
+import csv
+import io
 from threading import Lock
 from typing import ClassVar
 
@@ -80,14 +82,26 @@ class Database(BaseModel):
         except Exception as e:
             raise Exception(f"Error creating table: {e}")
 
-    def get_history(self) -> list:
+    def get_history(self):
         """
         Retrieve all the rows from the Cleaning Sessions table and
         write to a CSV file in the current directory.
         """
         try:
             history = self.session.query(CleaningSession).all()
-            return history
+            csv_buffer = io.StringIO()
+            writer = csv.writer(csv_buffer)
+            # Write the header (column names)
+            writer.writerow([column.name for column in CleaningSession.__table__.columns])
+            # Write the rows of the history
+            for session in history:
+                writer.writerow([
+                    int(getattr(session, column.name)) if isinstance(getattr(session, column.name), (int, float))
+                    else getattr(session, column.name) for column in CleaningSession.__table__.columns
+                ])
+            csv_content = csv_buffer.getvalue()
+            csv_buffer.close()
+            return csv_content
 
         except Exception as e:
             raise Exception(f"Error fetching history: {e}")
@@ -101,6 +115,14 @@ class Database(BaseModel):
         except Exception as e:
             self.session.rollback()
             raise Exception(f"Error saving session: {e}")
+
+    def clean(self):
+        """Clean the entire Cleaning Sessions table."""
+        try:
+            # Create all tables (if not already created)
+            Base.metadata.drop_all(self.session.bind)
+        except Exception as e:
+            raise Exception(f"Error creating table: {e}")
 
     def close(self):
         """Close the database session."""
