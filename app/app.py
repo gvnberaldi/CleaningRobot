@@ -43,9 +43,6 @@ def clean():
             database_conn=database_conn
         )
         cleaning_session_report = json.loads(cleaning_robot.clean())
-        # Cleanup if in testing mode
-        if current_app.config['TESTING']:
-            Database.connect().clean()
         return jsonify({'report': cleaning_session_report}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

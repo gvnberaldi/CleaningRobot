@@ -112,7 +112,7 @@ class TestCleanEndpoint:
         response = client.post('/clean', data={'file': action_file})
         # Extract the cleaning report from the response
         report = response.get_json().get('report')
-
+        print(response)
         # Check if the clean session was successful
         assert response.status_code == 200
         assert report is not None
