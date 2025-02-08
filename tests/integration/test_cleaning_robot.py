@@ -44,28 +44,3 @@ class TestCleaningRobot:
         print(report)
         assert report["status"] == "error"
         assert "non-walkable tile" in report["error"]
-
-    @pytest.mark.parametrize("map_actions_files", [("maps/valid_data/txt/map_3.txt",
-                                                    "actions/valid_data/txt/actions_3.txt")], indirect=True)
-    def test_history(self, robot):
-        """
-        Tests the history method to ensure the returned CSV data is valid and contains the correct header.
-        """
-        robot.clean()
-        csv_data = robot.history()
-
-        csv_file = io.StringIO(csv_data)
-        reader = csv.reader(csv_file)
-        rows = list(reader)
-
-        # Assert that there's at least one row (header + data)
-        assert len(rows) > 1, "CSV data is empty or does not contain data."
-
-        # Check the header matches the column names of CleaningSession
-        header = rows[0]
-        expected_header = [column.name for column in CleaningSession.__table__.columns]
-        assert header == expected_header, f"Header mismatch: {header} != {expected_header}"
-
-        # Check that the first row matches the data of the valid_cleaning_session
-        row_data = rows[1]  # The first row after the header
-        assert len(row_data) == len(expected_header), "Row data does not match column count."

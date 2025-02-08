@@ -53,31 +53,6 @@ class CleaningRobot(ABC):
         self.database_conn.create_table()
         self.database_conn.save_session(session)
 
-    def history(self):
-        """
-        Returns all the cleaning sessions stored in the database as CSV.
-        """
-        try:
-            history = self.database_conn.get_history()
-            # Create an in-memory string buffer
-            csv_buffer = io.StringIO()
-            writer = csv.writer(csv_buffer)
-            # Write the header (column names)
-            writer.writerow([column.name for column in CleaningSession.__table__.columns])
-            # Write the rows of the history
-            for session in history:
-                writer.writerow([
-                    int(getattr(session, column.name)) if isinstance(getattr(session, column.name), (int, float))
-                    else getattr(session, column.name) for column in CleaningSession.__table__.columns
-                ])
-            # Get the CSV content as string
-            csv_content = csv_buffer.getvalue()
-            csv_buffer.close()
-            return csv_content
-
-        except Exception as e:
-            raise Exception(f"An error occurred while generating the CSV string: {e}")
-
     @abstractmethod
     def clean(self):
         """

@@ -1,4 +1,5 @@
 import csv
+import io
 import os
 import sys
 import tempfile
@@ -9,7 +10,7 @@ from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from app.database import CleaningSession
+from app.database import CleaningSession, Base
 
 
 class TestDatabaseMethods:
@@ -36,21 +37,28 @@ class TestDatabaseMethods:
         db_connection.save_session(valid_cleaning_session)
 
         # Retrieve the history (list of CleaningSession objects)
-        retrieved_sessions = db_connection.get_history()
+        csv_dump = db_connection.get_history()
 
-        # Check if the retrieved sessions contain the valid_cleaning_session
-        assert len(retrieved_sessions) == 1, "No sessions retrieved."
+        csv_dump = io.StringIO(csv_dump)
+        reader = csv.reader(csv_dump)
+        rows = list(reader)
 
-        # Retrieve the first session and compare with the valid_cleaning_session
-        retrieved_session = retrieved_sessions[0]
+        # Assert that there's at least one row (header + data)
+        assert len(rows) > 1, "CSV data is empty or does not contain data."
 
-        # Check that the retrieved session matches the inserted one
-        assert retrieved_session.id == valid_cleaning_session.id, "ID mismatch."
-        assert retrieved_session.session_start_time == valid_cleaning_session.session_start_time, "Start time mismatch."
-        assert retrieved_session.session_final_state == valid_cleaning_session.session_final_state, "State mismatch."
-        assert retrieved_session.number_of_actions == valid_cleaning_session.number_of_actions, "Actions mismatch."
-        assert retrieved_session.number_of_cleaned_tiles == valid_cleaning_session.number_of_cleaned_tiles, "Tiles mismatch."
-        assert retrieved_session.duration == valid_cleaning_session.duration, "Duration mismatch."
+        # Check the header matches the column names of CleaningSession
+        header = rows[0]
+        expected_header = [column.name for column in CleaningSession.__table__.columns]
+        assert header == expected_header, f"Header mismatch: {header} != {expected_header}"
+
+        # Extract the expected values from valid_cleaning_session
+        expected_values = [
+            str(getattr(valid_cleaning_session, column.name)) for column in CleaningSession.__table__.columns
+        ]
+
+        # Compare the retrieved data row with the expected values
+        data_row = rows[1]
+        assert data_row == expected_values, f"Data mismatch: {data_row} != {expected_values}"
 
     def test_cleanup(self, db_connection):
         """Ensure the database session is properly cleaned after the test."""
