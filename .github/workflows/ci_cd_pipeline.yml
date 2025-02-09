@@ -51,27 +51,55 @@ jobs:
   acceptance-tests:
     name: Acceptance Tests
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     needs: unit-integration-tests
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.12"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Install Dependencies
+      - name: Build the app with docker-compose-test.yml
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          docker-compose -f docker-compose-test.yml build
+          docker-compose -f docker-compose-test.yml up -d
 
-      - name: Set PYTHONPATH
-        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+      - name: Run tests inside the container
+        run: |
+          docker exec app pytest
+        continue-on-error: false  # Stop the workflow if tests fail
 
-      # - name: Run Acceptance Tests with Coverage
-        # run: |
-          # coverage run -m pytest tests/acceptance
-          # coverage report --fail-under=80
+  # For main branch - deploys the app if tests pass
+  deploy:
+    name: Deploy to Docker Hub
+    runs-on: ubuntu-latest
+    needs: acceptance-tests
+    if: github.ref == 'refs/heads/main'  # Only run this job on the main branch
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker image to Docker Hub if tests pass
+        if: success()  # Only push if tests pass
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/flask-app:latest .
+          docker push ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
+
+      - name: Clean up Dockerfile and docker-compose-test.yml
+        if: success()  # Only delete files if the previous steps were successful
+        run: |
+          git rm Dockerfile
+          git rm docker-compose-test.yml
+          git commit -m "Remove Dockerfile and docker-compose-test.yml from main branch"
+          git push origin main

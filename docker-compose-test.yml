@@ -2,20 +2,40 @@ networks:
   app_network:
 
 services:
-  # Flask app container (pull the image instead of building)
+  # Flask app container
   flask_app:
-    image: <your-dockerhub-username>/flask-app:latest  # Pulls the prebuilt image from Docker Hub
+    build: .
     container_name: app
     ports:
       - "5000:5000"
     depends_on:
-      - prod_postgres  # Only depends on the production database
+      - test_postgres
+      - prod_postgres
     environment:
+      TEST_DB_HOST: test-db-postgres
+      TEST_DB_PORT: 5432
+      TEST_DB_USER: test
+      TEST_DB_PASSWORD: test
+      TEST_DB_DBNAME: test
+
       PROD_DB_HOST: production-db-postgres
       PROD_DB_PORT: 5432
       PROD_DB_USER: user
       PROD_DB_PASSWORD: root
       PROD_DB_DBNAME: postgres
+    networks:
+      - app_network
+
+  # Test PostgreSQL database container (without persistence)
+  test_postgres:
+    image: postgres:latest
+    container_name: test-db-postgres
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test
+    ports:
+      - "5430:5432"  # Host 5430, container 5430
     networks:
       - app_network
 

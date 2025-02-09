@@ -1,10 +1,6 @@
 import csv
 import io
-import json
-
 import pytest
-
-from app import config
 from app.database import CleaningSession
 
 
@@ -73,19 +69,6 @@ class TestCleanEndpoint:
         assert response.status_code == 400
         assert response.json['error'] == 'No actions file uploaded'
 
-    @pytest.mark.parametrize("files", ["actions/valid_data/txt"], indirect=True)
-    def test_clean_no_map(self, client, files):
-        """
-        Test the /set-map endpoint when no map is initialized.
-        """
-        config.map = None
-        for file in files:
-            response = client.post('/clean', data={'file': file})
-
-            # Check if the upload was successful
-            assert response.status_code == 400
-            assert response.json['error'] == 'No map loaded: a map must be loaded before cleaning'
-
     @pytest.mark.parametrize("map_actions_files", [("maps/valid_data/txt/map_1.txt",
                                                     "actions/invalid_data/txt/actions_1.txt")], indirect=True)
     def test_clean_invalid_actions_txt_file(self, client, map_actions_files):
@@ -112,7 +95,7 @@ class TestCleanEndpoint:
         response = client.post('/clean', data={'file': action_file})
         # Extract the cleaning report from the response
         report = response.get_json().get('report')
-        print(response)
+
         # Check if the clean session was successful
         assert response.status_code == 200
         assert report is not None

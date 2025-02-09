@@ -1,9 +1,11 @@
 import csv
 import io
+from abc import ABC
 from threading import Lock
-from typing import ClassVar
+from typing import ClassVar, Union
 
 from pydantic import BaseModel, Field, ConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Interval, make_url, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -13,8 +15,26 @@ from sqlalchemy.orm.session import Session
 Base = declarative_base()
 
 
-class DatabaseConfig(BaseModel):
-    """ Database configuration for connection. """
+class TestDatabaseConfig(BaseSettings):
+    """Test database configuration"""
+    model_config = SettingsConfigDict(env_prefix='TEST_DB_')
+
+    host: str = Field(default="localhost", description="The hostname or IP address of the database server.")
+    port: int = Field(default=5431, description="The port number for the database connection.")
+    user: str = Field(default="test", description="The username for authenticating to the database.")
+    password: str = Field(default="test", description="The password for the database user.")
+    dbname: str = Field(default="test", description="The name of the database to connect to.")
+
+    @property
+    def db_url(self) -> str:
+        """Constructs and returns the database URL for SQLAlchemy."""
+        return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
+
+
+class ProdDatabaseConfig(BaseSettings):
+    """Production dataset configuration"""
+    model_config = SettingsConfigDict(env_prefix='PROD_DB_')
+
     host: str = Field(default="localhost", description="The hostname or IP address of the database server.")
     port: int = Field(default=5430, description="The port number for the database connection.")
     user: str = Field(default="user", description="The username for authenticating to the database.")
@@ -41,7 +61,7 @@ class CleaningSession(Base):
 
 class Database(BaseModel):
     """ Database class for managing the database connection. """
-    config: DatabaseConfig = Field(..., description="Database configuration", frozen=True)
+    config: Union[ProdDatabaseConfig, TestDatabaseConfig] = Field(..., description="Database configuration", frozen=True)
     session: Session = Field(..., description="Database session", frozen=True)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -49,14 +69,14 @@ class Database(BaseModel):
     # Singleton pattern: only one database connection per configuration
     _instances: ClassVar = {}
 
-    def __new__(cls, config: DatabaseConfig):
+    def __new__(cls, config: Union[ProdDatabaseConfig, TestDatabaseConfig]):
         config_hash = hash(config.db_url)  # Use db_url as the unique key for the config
         if config_hash not in cls._instances:
             instance = super(Database, cls).__new__(cls)
             cls._instances[config_hash] = instance
         return cls._instances[config_hash]
 
-    def __init__(self, config: DatabaseConfig):
+    def __init__(self, config: Union[ProdDatabaseConfig, TestDatabaseConfig]):
         try:
             # Use the db_url property of DatabaseConfig to construct the engine
             engine = create_engine(config.db_url)
@@ -70,7 +90,7 @@ class Database(BaseModel):
             raise Exception(f"Error connecting to database: {e}")
 
     @classmethod
-    def connect(cls, config: DatabaseConfig = DatabaseConfig()) -> "Database":
+    def connect(cls, config: Union[ProdDatabaseConfig, TestDatabaseConfig] = ProdDatabaseConfig()) -> "Database":
         """Class method to connect to the database and return an instance if successful."""
         try:
             return cls(config=config)
