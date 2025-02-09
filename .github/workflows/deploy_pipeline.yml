@@ -34,26 +34,7 @@ jobs:
         with:
           compose-file: "./docker-compose.yml"
 
-      - name: Create a GitHub Release
-        if: ${{ success() }}
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Release
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.sha }}
-          release_name: Release ${{ github.sha }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload docker-compose.yml to GitHub Release
-        if: ${{ success() }}
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./docker-compose.yml
-          asset_name: docker-compose.yml
-          asset_content_type: application/yaml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
+          files: docker-compose.yml
