@@ -9,9 +9,10 @@ from app.cleaning_robot import BaseCleaningRobot
 from app.database import Database
 from app.map import Map
 from app.robot_path import RobotPath
-from app import config
 
 my_app = Flask(__name__)
+
+base_cleaning_robot = BaseCleaningRobot()
 
 
 @my_app.route('/set-map', methods=['POST'])
@@ -21,7 +22,7 @@ def set_map():
 
     file = request.files['file']
     try:
-        config.map = Map.load(file)
+        base_cleaning_robot.map = Map.load(file)
         return jsonify({'message': 'Map uploaded successfully!'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -31,18 +32,15 @@ def set_map():
 def clean():
     if 'file' not in request.files:
         return jsonify({'error': 'No actions file uploaded'}), 400
-    if config.map is None:
+    if base_cleaning_robot.map is None:
         return jsonify({'error': 'No map loaded: a map must be loaded before cleaning'}), 400
     file = request.files['file']
     try:
         # Determine database connection
         database_conn = current_app.config['DATABASE'] if current_app.config['TESTING'] else Database.connect()
-        cleaning_robot = BaseCleaningRobot(
-            map=config.map,
-            path=RobotPath.load(file),
-            database_conn=database_conn
-        )
-        cleaning_session_report = json.loads(cleaning_robot.clean())
+        base_cleaning_robot.path = RobotPath.load(file)
+        base_cleaning_robot.database_conn = database_conn
+        cleaning_session_report = json.loads(base_cleaning_robot.clean())
         return jsonify({'report': cleaning_session_report}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

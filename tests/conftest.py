@@ -7,7 +7,7 @@ import pytest
 from werkzeug.datastructures import FileStorage
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-from app.database import Base, CleaningSession, Database, DatabaseConfig
+from app.database import Base, CleaningSession, Database, TestDatabaseConfig
 from app.cleaning_robot import BaseCleaningRobot
 from app.map import Map
 from app.robot_path import RobotPath
@@ -80,14 +80,7 @@ def robot(db_connection, map_actions_files):
 
 @pytest.fixture(scope="function")
 def db_connection():
-    test_db_config = DatabaseConfig(
-        host="localhost",
-        port=5431,
-        user="test",
-        password="test",
-        dbname="test"
-    )
-    db_instance = Database.connect(test_db_config)
+    db_instance = Database.connect(TestDatabaseConfig())
     # Cleanup: drop tables
     db_instance.clean()
     yield db_instance  # Provide the database instance to the test function

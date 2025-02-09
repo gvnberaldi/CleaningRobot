@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime
 from pydantic import Field, BaseModel
 from abc import ABC, abstractmethod
@@ -10,33 +10,54 @@ from app.map import Map
 from app.robot_path import RobotPath
 
 
-class CleaningRobot(ABC):
+class CleaningRobot(BaseModel, ABC):
     """
     Abstract class tha define the interface of the cleaning robot.
     """
-    map: Map = Field(..., description="The map the robot will move on.")
-    path: RobotPath = Field(..., description="The robot's starting position and movement actions.")
-    database_conn: Database = Field(..., description="Connection to the database for storing "
-                                                     "and retrieve cleaning sessions.")
-    cleaned_tiles: List[tuple] = Field(default_factory=list, description="List of cleaned tiles.")
+    _map: Optional[Map] = None
+    _path: Optional[RobotPath] = None
+    _database_conn: Optional[Database] = None
+    _cleaned_tiles: List[tuple] = []
 
-    def __init__(self, map: Map, path: RobotPath, database_conn: Database):
-        self.map = map
-        self.path = path
-        self.database_conn = database_conn
-        self.cleaned_tiles = []
+    def __init__(self, map: Optional[Map] = None, path: Optional[RobotPath] = None,
+                 database_conn: Optional[Database] = None):
+        super().__init__(map=map, path=path, database_conn=database_conn)
+        if map is not None:
+            self.map = map
+        if path is not None:
+            self.path = path
+        if database_conn is not None:
+            self.database_conn = database_conn
 
-    def set_map(self, map: Map):
-        """
-        Sets the map the robot will move on.
-        """
-        self.map = map
+    @property
+    def map(self) -> Optional[Map]:
+        return self._map
 
-    def set_path(self, path: RobotPath):
-        """
-        Sets the robot's starting position and movement actions.
-        """
-        self.path = path
+    @map.setter
+    def map(self, map: Map):
+        if not isinstance(map, Map):
+            raise ValueError('The map must be of type Map.')
+        self._map = map
+
+    @property
+    def path(self) -> Optional[RobotPath]:
+        return self._path
+
+    @path.setter
+    def path(self, path: RobotPath):
+        if not isinstance(path, RobotPath):
+            raise ValueError('The path must be of type RobotPath.')
+        self._path = path
+
+    @property
+    def database_conn(self) -> Optional[Database]:
+        return self._database_conn
+
+    @database_conn.setter
+    def database_conn(self, database_conn: Database):
+        if not isinstance(database_conn, Database):
+            raise ValueError('The database_conn must be of type Database.')
+        self._database_conn = database_conn
 
     def _store_session(self, report: Dict[str, any], start_time: datetime, performed_actions: int):
         """Stores the cleaning session in the database."""
@@ -47,7 +68,7 @@ class CleaningRobot(ABC):
             session_start_time=start_time,
             session_final_state=report["status"],
             number_of_actions=performed_actions,
-            number_of_cleaned_tiles=len(self.cleaned_tiles),
+            number_of_cleaned_tiles=len(self._cleaned_tiles),
             duration=duration
         )
         self.database_conn.create_table()
@@ -62,7 +83,7 @@ class CleaningRobot(ABC):
         pass
 
 
-class BaseCleaningRobot(BaseModel, CleaningRobot):
+class BaseCleaningRobot(CleaningRobot):
     """
     Concrete class that implements the base cleaning robot interface.
     """
@@ -78,7 +99,7 @@ class BaseCleaningRobot(BaseModel, CleaningRobot):
             if not (0 <= x < self.map.cols and 0 <= y < self.map.rows) or not self.map.is_walkable(x, y):
                 raise ValueError(f"Invalid starting position ({x}, {y}).")
 
-            self.cleaned_tiles.append((x, y))  # Mark starting position as cleaned
+            self._cleaned_tiles.append((x, y))  # Mark starting position as cleaned
             for action in self.path.actions:
                 for _ in range(action.steps):
                     if action.direction == "north":
@@ -94,15 +115,17 @@ class BaseCleaningRobot(BaseModel, CleaningRobot):
                     if not self.map.is_walkable(x, y):
                         raise ValueError(f"Robot attempted to move to a non-walkable tile at ({x}, {y}).")
 
-                    self.cleaned_tiles.append((x, y))
+                    self._cleaned_tiles.append((x, y))
                     performed_actions += 1
 
         except ValueError as e:
             error_message = str(e)
-            report = {"cleaned_tiles": self.cleaned_tiles, "status": "error", "error": error_message}
+            report = {"cleaned_tiles": self._cleaned_tiles, "status": "error", "error": error_message}
             self._store_session(report, start_time, performed_actions)
+            self._cleaned_tiles = []
             return json.dumps(report, indent=4)
 
-        report = {"cleaned_tiles": self.cleaned_tiles, "status": "completed", "error": None}
+        report = {"cleaned_tiles": self._cleaned_tiles, "status": "completed", "error": None}
         self._store_session(report, start_time, performed_actions)
+        self._cleaned_tiles = []
         return json.dumps(report, indent=0)
