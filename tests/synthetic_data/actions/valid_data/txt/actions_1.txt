@@ -1,0 +1,5 @@
+3 3
+north 1
+west 1
+north 1
+east 2

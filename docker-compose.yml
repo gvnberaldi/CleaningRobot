@@ -1,0 +1,39 @@
+networks:
+  app_network:
+
+services:
+  # Flask app container (pull the image instead of building)
+  flask_app:
+    image: gvnberaldi/cleaning-robot:latest  # Pulls the prebuilt image from Docker Hub
+    container_name: app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - prod_postgres  # Only depends on the production database
+    environment:
+      PROD_DB_HOST: production-db-postgres
+      PROD_DB_PORT: 5432
+      PROD_DB_USER: user
+      PROD_DB_PASSWORD: root
+      PROD_DB_DBNAME: postgres
+    networks:
+      - app_network
+
+  # Production PostgreSQL database container
+  prod_postgres:
+    image: postgres:latest
+    container_name: production-db-postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: postgres
+    ports:
+      - "5431:5432"  # Host 5431, container 5431
+    volumes:
+      - data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+volumes:
+  data:
+    driver: local

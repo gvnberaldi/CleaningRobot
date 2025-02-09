@@ -1,0 +1,6 @@
+<html>
+  <body>
+    <h1>Invalid File Format</h1>
+    <p>This is not a valid TXT format for robot path.</p>
+  </body>
+</html>

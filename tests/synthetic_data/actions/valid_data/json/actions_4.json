@@ -1,0 +1,8 @@
+{
+  "x": 3,
+  "y": 3,
+  "actions": [
+    { "direction": "west", "steps": 4 },
+    { "direction": "north", "steps": 2 }
+  ]
+}
