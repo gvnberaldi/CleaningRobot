@@ -36,11 +36,3 @@ jobs:
         uses: hoverkraft-tech/compose-action@v2.0.1
         with:
           compose-file: "./docker-compose.yml"
-
-      - name: Clean up Dockerfile and docker-compose-test.yml
-        if: success()  # Only delete files if the previous steps were successful
-        run: |
-          git rm Dockerfile
-          git rm docker-compose-test.yml
-          git commit -m "Remove Dockerfile and docker-compose-test.yml from main branch"
-          git push origin main
