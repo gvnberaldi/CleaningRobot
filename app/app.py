@@ -5,7 +5,7 @@ import sys
 from flask import Flask, request, jsonify, Response, current_app
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-from app.cleaning_robot import BaseCleaningRobot
+from app.cleaning_robot import BaseCleaningRobot, PremiumCleaningRobot
 from app.database import Database
 from app.map import Map
 from app.robot_path import RobotPath
@@ -13,6 +13,29 @@ from app.robot_path import RobotPath
 my_app = Flask(__name__)
 
 base_cleaning_robot = BaseCleaningRobot()
+premium_cleaning_robot = PremiumCleaningRobot()
+
+
+def process_cleaning_request(robot, file):
+    if robot.map is None:
+        raise ValueError('No map loaded: a map must be loaded before cleaning.')
+    # Determine database connection
+    database_conn = current_app.config['DATABASE'] if current_app.config['TESTING'] else Database.connect()
+    # Load the robot path
+    robot.path = RobotPath.load(file)
+    robot.database_conn = database_conn
+    # Return the cleaning session report
+    return json.loads(robot.clean())
+
+
+def set_robot_map(robot, file):
+    try:
+        robot.map = Map.load(file)
+        if isinstance(robot, PremiumCleaningRobot):
+            robot.reset_cleaned_tiles()  # Only reset for premium robot
+        return jsonify({'message': 'Map uploaded successfully!'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @my_app.route('/set-map', methods=['POST'])
@@ -21,26 +44,41 @@ def set_map():
         return jsonify({'error': 'No map file uploaded'}), 400
 
     file = request.files['file']
-    try:
-        base_cleaning_robot.map = Map.load(file)
-        return jsonify({'message': 'Map uploaded successfully!'}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return set_robot_map(base_cleaning_robot, file)
+
+
+@my_app.route('/set-map-premium', methods=['POST'])
+def set_map_premium():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No map file uploaded'}), 400
+
+    file = request.files['file']
+    return set_robot_map(premium_cleaning_robot, file)
 
 
 @my_app.route('/clean', methods=['POST'])
 def clean():
     if 'file' not in request.files:
         return jsonify({'error': 'No actions file uploaded'}), 400
-    if base_cleaning_robot.map is None:
-        return jsonify({'error': 'No map loaded: a map must be loaded before cleaning'}), 400
+
     file = request.files['file']
     try:
-        # Determine database connection
-        database_conn = current_app.config['DATABASE'] if current_app.config['TESTING'] else Database.connect()
-        base_cleaning_robot.path = RobotPath.load(file)
-        base_cleaning_robot.database_conn = database_conn
-        cleaning_session_report = json.loads(base_cleaning_robot.clean())
+        # Use the helper function to process the cleaning request
+        cleaning_session_report = process_cleaning_request(base_cleaning_robot, file)
+        return jsonify({'report': cleaning_session_report}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@my_app.route('/clean-premium', methods=['POST'])
+def clean_premium():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No actions file uploaded'}), 400
+
+    file = request.files['file']
+    try:
+        # Use the helper function to process the cleaning request
+        cleaning_session_report = process_cleaning_request(premium_cleaning_robot, file)
         return jsonify({'report': cleaning_session_report}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
