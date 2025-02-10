@@ -9,23 +9,10 @@ This project follows DevOps best practices, incorporating Continuous Integration
 To run this application, you need to have **Docker** and **Docker Compose** installed on your system.
 
 ### Installing Docker & Docker Compose
-#### **Windows & Mac**
+#### **Windows, Linux & Mac**
 - Download and install **Docker Desktop** from the official website:  
   [https://www.docker.com/get-started](https://www.docker.com/get-started)
 - Docker Compose is included with Docker Desktop.
-
-#### **Linux**
-Run the following commands to install Docker and Docker Compose:
-```bash
-# Install Docker
-curl -fsSL https://get.docker.com | sudo bash
-
-# Install Docker Compose (latest version)
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-
-# Make Docker Compose executable
-sudo chmod +x /usr/local/bin/docker-compose
-```
 
 Verify installation:
 ```bash
