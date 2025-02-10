@@ -10,26 +10,26 @@ from app.database import Database
 from app.map import Map
 from app.robot_path import RobotPath
 
+MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB limit
+
 my_app = Flask(__name__)
 
 base_cleaning_robot = BaseCleaningRobot()
 premium_cleaning_robot = PremiumCleaningRobot()
 
 
-def process_cleaning_request(robot, file):
-    if robot.map is None:
-        raise ValueError('No map loaded: a map must be loaded before cleaning.')
-    # Determine database connection
-    database_conn = current_app.config['DATABASE'] if current_app.config['TESTING'] else Database.connect()
-    # Load the robot path
-    robot.path = RobotPath.load(file)
-    robot.database_conn = database_conn
-    # Return the cleaning session report
-    return json.loads(robot.clean())
+def check_file_size(file):
+    # Check file size
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    if file_size > MAX_FILE_SIZE:
+        raise ValueError('File is too large (max 5MB)')
 
 
 def set_robot_map(robot, file):
     try:
+        check_file_size(file)
         robot.map = Map.load(file)
         if isinstance(robot, PremiumCleaningRobot):
             robot.reset_cleaned_tiles()  # Only reset for premium robot
@@ -56,6 +56,18 @@ def set_map_premium():
     return set_robot_map(premium_cleaning_robot, file)
 
 
+def process_cleaning_request(robot, file):
+    if robot.map is None:
+        raise ValueError('No map loaded: a map must be loaded before cleaning.')
+    # Determine database connection
+    database_conn = current_app.config['DATABASE'] if current_app.config['TESTING'] else Database.connect()
+    # Load the robot path
+    robot.path = RobotPath.load(file)
+    robot.database_conn = database_conn
+    # Return the cleaning session report
+    return json.loads(robot.clean())
+
+
 @my_app.route('/clean', methods=['POST'])
 def clean():
     if 'file' not in request.files:
@@ -63,6 +75,7 @@ def clean():
 
     file = request.files['file']
     try:
+        check_file_size(file)
         # Use the helper function to process the cleaning request
         cleaning_session_report = process_cleaning_request(base_cleaning_robot, file)
         return jsonify({'report': cleaning_session_report}), 200
@@ -77,6 +90,7 @@ def clean_premium():
 
     file = request.files['file']
     try:
+        check_file_size(file)
         # Use the helper function to process the cleaning request
         cleaning_session_report = process_cleaning_request(premium_cleaning_robot, file)
         return jsonify({'report': cleaning_session_report}), 200

@@ -131,8 +131,6 @@ class TestCleanEndpoint:
         assert report['status'] == 'error'
         assert "non-walkable tile" in report['error']
 
-
-class TestHistoryEndpoint:
     def test_history_endpoint_success(self, client, db_connection, valid_cleaning_session):
         """Test the /history endpoint for returning a valid CSV response."""
         # Insert the valid session into the database

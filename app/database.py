@@ -114,12 +114,14 @@ class Database(BaseModel):
             # Check if the table exists
             inspector = inspect(self.session.bind)
             if CleaningSession.__tablename__ not in inspector.get_table_names():
-                raise Exception("Error: Table 'CleaningSessions' does not exist.")
+                raise Exception("There are no past cleaning sessions in the database. "
+                                "Start a cleaning session to begin tracking your cleaning history.")
 
             # Retrieve all rows
             history = self.session.query(CleaningSession).all()
             if not history:
-                raise Exception("Error: No data found in the 'CleaningSessions' table.")
+                raise Exception("There are no past cleaning sessions in the database. "
+                                "Start a cleaning session to begin tracking your cleaning history.")
             csv_buffer = io.StringIO()
             writer = csv.writer(csv_buffer)
             # Write the header (column names)
